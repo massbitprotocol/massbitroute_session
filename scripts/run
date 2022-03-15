@@ -29,7 +29,7 @@ _reload() {
 }
 
 _install() {
-	mkdir -p $service_dir
+	mkdir -p $dir/logs $dir/tmp $dir/db
 	user=massbit
 	pass=41d919e74993945a97972d147c4d01847e8bc1b6
 
@@ -78,7 +78,13 @@ _monitor() {
 		$0 _reload
 	fi
 }
+loop() {
+	while true; do
+		$0 $@
+		sleep 3
+	done
 
+}
 _run() {
 	$SITE_ROOT/start_server
 }
