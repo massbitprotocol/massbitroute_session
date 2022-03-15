@@ -25,8 +25,6 @@ _git_config() {
 }
 _reload() {
 	bash $SITE_ROOT/etc/mkagent/push.sh _kill
-	curl -X POST http://127.0.0.1:44448/__internal_prometheus_node/-/reload
-	curl -X POST http://127.0.0.1:44449/__internal_prometheus_gw/-/reload
 	$cmd _update
 }
 
@@ -53,12 +51,6 @@ _install() {
 
 	git -C $SITE_ROOT/etc/$service remote set-url origin http://$user:$pass@git.massbitroute.com/massbitroute/${service}.git
 
-	service=$type
-	user=$service
-	pass=36445cd061b196017bfa30986d336448ec6739d4
-	git clone http://$user:$pass@git.massbitroute.com/massbitroute/${service}.git $service_dir/$service
-	git -C $service_dir/$service remote set-url origin http://$user:$pass@git.massbitroute.com/massbitroute/${service}.git
-
 	ln -sf /massbit/massbitroute/app/gbc /massbit/massbitroute/app/src/gbc
 	ln -sf /massbit/massbitroute/app/gbc/bin/openresty /usr/local/openresty
 	apt-get update
@@ -70,70 +62,9 @@ _install() {
 
 }
 
-_service_grafana() {
-	mkdir -p $SITE_ROOT/data/grafana
-	# val=$(echo $SITE_ROOT | sed 's/\//\\\//g')
-	# sed "s/_SITE_ROOT_/$val/g" $SITE_ROOT/etc/grafana/stat_tmpl.ini >$SITE_ROOT/etc/grafana/stat.ini
-
-	exec $GRAFANA_DIR/bin/grafana-server -config $SITE_ROOT/etc/grafana/stat.ini -homepath $GRAFANA_DIR
-}
-
-# service config for Prometheus Node
-_service_prometheus_node() {
-	mkdir -p $SITE_ROOT/data/prometheus_node
-	# ASDF=$SITE_ROOT/bin/.asdf/installs
-	# PROMETHEUS_DIR=$ASDF/prometheus/$PROMETHEUS_VERSION
-	exec $PROMETHEUS_DIR/bin/prometheus --web.enable-admin-api --config.file=$SITE_ROOT/etc/prometheus/stat_node.yml --web.listen-address="127.0.0.1:44448" --web.external-url http://127.0.0.1:44448/__internal_prometheus_node --web.enable-lifecycle --storage.tsdb.path $SITE_ROOT/data/prometheus_node
-}
-
-# service config for Prometheus Gateway
-_service_prometheus_gw() {
-	mkdir -p $SITE_ROOT/data/prometheus_gw
-	# ASDF=$SITE_ROOT/bin/.asdf/installs
-	# PROMETHEUS_DIR=$ASDF/prometheus/$PROMETHEUS_VERSION
-	exec $PROMETHEUS_DIR/bin/prometheus --web.enable-admin-api --config.file=$SITE_ROOT/etc/prometheus/stat_gw.yml --web.listen-address="127.0.0.1:44449" --web.external-url http://127.0.0.1:44449/__internal_prometheus_gw --web.enable-lifecycle --storage.tsdb.path $SITE_ROOT/data/prometheus_gw
-}
-
-loop() {
-	while true; do
-		$0 $@
-		sleep 3
-	done
-}
-_rebuild_conf() {
-
-	_dir=$SITE_ROOT/etc/prometheus
-
-	_file_ok=$SITE_ROOT/etc/prometheus/stat_gw.yml
-	_file=$(mktemp)
-	cat $SITE_ROOT/etc/prometheus/_stat.yml >$_file
-
-	find $_dir/stat_gw -type f -iname '*.yml' | while read f; do
-		cat $f >>$_file
-		echo >>$_file
-	done
-	mv $_file $_file_ok
-
-	_file_ok=$SITE_ROOT/etc/prometheus/stat_node.yml
-	_file=$(mktemp)
-	cat $SITE_ROOT/etc/prometheus/_stat.yml >$_file
-
-	find $_dir/stat_node -type f -iname '*.yml' | while read f; do
-		cat $f >>$_file
-		echo >>$_file
-	done
-	mv $_file $_file_ok
-}
 _monitor() {
-	_rebuild_conf
 	is_reload=0
-	echo mbr-stat >vars/TYPE
-
-	if [ ! -d "$SITE_ROOT/etc/mkagent/.git" ]; then
-		mkdir -p $SITE_ROOT/etc/mkagent
-		git clone http://mbr_gateway:6a796299bb72357770735a79019612af228586e7@git.massbitroute.com/massbitroute/mkagent.git $SITE_ROOT/etc/mkagent
-		is_reload=1
-	fi
+	echo mbr-session >vars/TYPE
 
 	for d in /etc/letsencrypt /massbit/massbitroute/app/gbc $SITE_ROOT $SITE_ROOT/etc/mkagent; do
 		mkdir -p $d
