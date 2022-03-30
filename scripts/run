@@ -8,7 +8,6 @@ _load_env $SITE_ROOT
 
 REPOS="/etc/letsencrypt|$GIT_PRIVATE_READ_URL/massbitroute/ssl.git|master \
 /massbit/massbitroute/app/gbc|$GIT_PUBLIC_URL/massbitprotocol/massbitroute_gbc.git \
-/massbit/massbitroute/app/gbc/bin/.asdf|$GIT_PUBLIC_URL/massbitprotocol/massbitroute_asdf.git|master \
 $SITE_ROOT|$GIT_PUBLIC_URL/massbitprotocol/massbitroute_${TYPE}.git \
 $SITE_ROOT/etc/mkagent|$GIT_PUBLIC_URL/massbitprotocol/massbitroute_mkagent.git"
 
