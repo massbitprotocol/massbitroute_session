@@ -30,6 +30,7 @@ $SITE_ROOT/etc/mkagent|$GIT_PUBLIC_URL/massbitprotocol/massbitroute_mkagent.git"
 # }
 
 _install() {
+	mkdir -p $SITE_ROOT/logs $SITE_ROOT/db
 	_git_config
 	for _pathgit in $REPOS; do
 		_path=$(echo $_pathgit | cut -d'|' -f1)
