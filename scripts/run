@@ -2,9 +2,13 @@
 TYPE="session"
 SITE_ROOT=$(realpath $(dirname $(realpath $0))/..)
 export HOME=$SITE_ROOT
-cd $SITE_ROOT
+
+bash $SITE_ROOT/cmd_server _env
+source $SITE_ROOT/.env_raw
+
 source $SITE_ROOT/scripts/base.sh
-_load_env $SITE_ROOT
+cd $SITE_ROOT
+# _load_env $SITE_ROOT
 
 REPOS="/etc/letsencrypt|$GIT_PRIVATE_READ_URL/massbitroute/ssl.git|master \
 /massbit/massbitroute/app/gbc|$GIT_PUBLIC_URL/massbitprotocol/massbitroute_gbc.git \
