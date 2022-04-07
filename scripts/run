@@ -46,10 +46,22 @@ _reload() {
 	$SITE_ROOT/cmd_server _update
 }
 
+_update() {
+	echo "Update"
+	st=0
+	return $st
+}
+
 _monitor() {
 	echo mbr-session >vars/TYPE
 	_update_sources $REPOS
 	is_reload=$?
+
+	_update
+	if [ $is_reload -ne 0 ]; then
+		is_reload=$?
+	fi
+
 	if [ $is_reload -ne 0 ]; then
 		$0 _reload
 	fi
