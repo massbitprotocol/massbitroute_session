@@ -1,0 +1,9 @@
+.gitconfig
+vars/
+tmp/
+logs/
+data/
+db/
+/cache/
+/.env_raw
+/src/env.lua
