@@ -3,30 +3,88 @@ TYPE="session"
 SITE_ROOT=$(realpath $(dirname $(realpath $0))/..)
 export HOME=$SITE_ROOT
 
-bash $SITE_ROOT/cmd_server _env
-source $SITE_ROOT/.env_raw
-
+if [ -e "$SITE_ROOT/cmd_server" ]; then bash $SITE_ROOT/cmd_server _env; fi
+if [ -f "$SITE_ROOT/.env_raw" ]; then source $SITE_ROOT/.env_raw; fi
 source $SITE_ROOT/scripts/base.sh
+
+# bash $SITE_ROOT/cmd_server _env
+# source $SITE_ROOT/.env_raw
+
+# source $SITE_ROOT/scripts/base.sh
 cd $SITE_ROOT
 # _load_env $SITE_ROOT
 
-REPOS="/etc/letsencrypt|$GIT_PRIVATE_READ_URL/massbitroute/ssl.git|master \
-/massbit/massbitroute/app/gbc|$GIT_PUBLIC_URL/massbitprotocol/massbitroute_gbc.git \
-$SITE_ROOT|$GIT_PUBLIC_URL/massbitprotocol/massbitroute_${TYPE}.git \
-$SITE_ROOT/etc/mkagent|$GIT_PUBLIC_URL/massbitprotocol/massbitroute_mkagent.git"
-_prepare() {
-	echo "Prepare"
+mbr_root=/massbit/massbitroute/app
+service_dir=$mbr_root/src/sites/services
+
+export BRANCH=${BRANCH:-dev}
+export MBRAPP_BRANCH=${MBRAPP_BRANCH:-dev}
+export ASDF_BRANCH=${ASDF_BRANCH:-dev}
+export SSL_BRANCH=${SSL_BRANCH:-dev}
+export GWMAN_BRANCH=${GWMAN_BRANCH:-dev}
+export NODE_BRANCH=${NODE_BRANCH:-dev}
+export GATEWAY_BRANCH=${GATEWAY_BRANCH:-dev}
+export STAT_BRANCH=${STAT_BRANCH:-dev}
+export MONITOR_BRANCH=${MONITOR_BRANCH:-dev}
+export API_BRANCH=${API_BRANCH:-dev}
+export SESSION_BRANCH=${SESSION_BRANCH:-dev}
+export GIT_BRANCH=${GIT_BRANCH:-dev}
+export MKAGENT_BRANCH=${MKAGENT_BRANCH:-dev}
+
+_repo() {
+	REPOS="\
+$SITE_ROOT/env|$GIT_PRIVATE_READ_URL/massbitroute/env.git|$MBR_ENV \
+/etc/letsencrypt|$GIT_PRIVATE_READ_URL/massbitroute/ssl.git|$SSL_BRANCH \
+  $service_dir/mkagent|$GIT_PUBLIC_URL/massbitprotocol/massbitroute_mkagent.git|$MKAGENT_BRANCH \
+"
 }
 
-_install() {
-	mkdir -p $SITE_ROOT/logs $SITE_ROOT/db
-	_git_config
+_repo
+
+# REPOS="/etc/letsencrypt|$GIT_PRIVATE_READ_URL/massbitroute/ssl.git|master \
+# /massbit/massbitroute/app/gbc|$GIT_PUBLIC_URL/massbitprotocol/massbitroute_gbc.git \
+# $SITE_ROOT|$GIT_PUBLIC_URL/massbitprotocol/massbitroute_${TYPE}.git \
+# $SITE_ROOT/etc/mkagent|$GIT_PUBLIC_URL/massbitprotocol/massbitroute_mkagent.git"
+_prepare() {
+	echo "Prepare"
+	_git_clone $GIT_PRIVATE_READ_URL/massbitroute/env.git /massbit/massbitroute/app/src/env $BRANCH
+
+	source $SITE_ROOT/.env
+	_git_clone $GIT_PUBLIC_URL/massbitprotocol/massbitroute_gbc.git /massbit/massbitroute/app/gbc
+
+	bash $SITE_ROOT/cmd_server _env
+	source $SITE_ROOT/.env_raw
+	_repo
+
+}
+_install_repos() {
+	_repo
 	for _pathgit in $REPOS; do
 		_path=$(echo $_pathgit | cut -d'|' -f1)
 		_url=$(echo $_pathgit | cut -d'|' -f2)
 		_branch=$(echo $_pathgit | cut -d'|' -f3)
 		_git_clone $_url $_path $_branch
 	done
+}
+
+_install() {
+	if [ -z "$GIT_PRIVATE_READ_URL" ]; then
+		echo "Need GIT_PRIVATE_READ_URL"
+		exit 1
+	fi
+
+	mkdir -p $SITE_ROOT/logs/nginx $SITE_ROOT/db $SITE_ROOT/tmp
+
+	_git_config
+	_prepare
+	_install_repos
+
+	# for _pathgit in $REPOS; do
+	# 	_path=$(echo $_pathgit | cut -d'|' -f1)
+	# 	_url=$(echo $_pathgit | cut -d'|' -f2)
+	# 	_branch=$(echo $_pathgit | cut -d'|' -f3)
+	# 	_git_clone $_url $_path $_branch
+	# done
 
 	ln -sf /massbit/massbitroute/app/gbc /massbit/massbitroute/app/src/gbc
 	ln -sf /massbit/massbitroute/app/gbc/bin/openresty /usr/local/openresty
@@ -46,21 +104,32 @@ _reload() {
 	$SITE_ROOT/cmd_server _update
 }
 
+_update_repos() {
+	_repo
+	_update_sources $REPOS
+	_st_repo=$?
+	return $_st_repo
+}
+
 _update() {
 	echo "Update"
-	st=0
-	return $st
+	_update_repos
+	_st_update=$?
+
+	return $_st_update
+
 }
 
 _monitor() {
 	echo mbr-session >vars/TYPE
-	_update_sources $REPOS
-	is_reload=$?
+	# _update_sources $REPOS
+	# is_reload=$?
 
 	_update
-	if [ $is_reload -ne 0 ]; then
-		is_reload=$?
-	fi
+	is_reload=$?
+	# if [ $is_reload -ne 0 ]; then
+	# 	is_reload=$?
+	# fi
 
 	if [ $is_reload -ne 0 ]; then
 		$0 _reload
