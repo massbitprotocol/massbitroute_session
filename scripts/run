@@ -58,7 +58,7 @@ _init() {
 		echo "Need GIT_PRIVATE_READ_URL"
 		exit 1
 	fi
-	_tune_os
+	# _tune_os
 	if [ ! -f "$SITE_ROOT/.env" ]; then
 		echo "$MBR_ENV" >$SITE_ROOT/.env
 	fi
