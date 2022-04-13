@@ -7,12 +7,7 @@ if [ -e "$SITE_ROOT/cmd_server" ]; then bash $SITE_ROOT/cmd_server _env; fi
 if [ -f "$SITE_ROOT/.env_raw" ]; then source $SITE_ROOT/.env_raw; fi
 source $SITE_ROOT/scripts/base.sh
 
-# bash $SITE_ROOT/cmd_server _env
-# source $SITE_ROOT/.env_raw
-
-# source $SITE_ROOT/scripts/base.sh
 cd $SITE_ROOT
-# _load_env $SITE_ROOT
 
 mbr_root=/massbit/massbitroute/app
 service_dir=$mbr_root/src/sites/services
@@ -133,14 +128,9 @@ _update() {
 
 _monitor() {
 	echo mbr-session >vars/TYPE
-	# _update_sources $REPOS
-	# is_reload=$?
 
 	_update
 	is_reload=$?
-	# if [ $is_reload -ne 0 ]; then
-	# 	is_reload=$?
-	# fi
 
 	if [ $is_reload -ne 0 ]; then
 		$0 _reload
