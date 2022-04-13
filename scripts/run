@@ -17,6 +17,7 @@ cd $SITE_ROOT
 mbr_root=/massbit/massbitroute/app
 service_dir=$mbr_root/src/sites/services
 
+export MBR_ENV=${MBR_ENV:-dev}
 export BRANCH=${BRANCH:-dev}
 export MBRAPP_BRANCH=${MBRAPP_BRANCH:-dev}
 export ASDF_BRANCH=${ASDF_BRANCH:-dev}
@@ -35,29 +36,19 @@ _repo() {
 	REPOS="\
 $SITE_ROOT/env|$GIT_PRIVATE_READ_URL/massbitroute/env.git|$MBR_ENV \
 /etc/letsencrypt|$GIT_PRIVATE_READ_URL/massbitroute/ssl.git|$SSL_BRANCH \
+ $mbr_root/gbc|https://github.com/massbitprotocol/massbitroute_gbc|$GBC_BRANCH \
   $service_dir/mkagent|$GIT_PUBLIC_URL/massbitprotocol/massbitroute_mkagent.git|$MKAGENT_BRANCH \
 "
 }
 
 _repo
 
-# REPOS="/etc/letsencrypt|$GIT_PRIVATE_READ_URL/massbitroute/ssl.git|master \
-# /massbit/massbitroute/app/gbc|$GIT_PUBLIC_URL/massbitprotocol/massbitroute_gbc.git \
-# $SITE_ROOT|$GIT_PUBLIC_URL/massbitprotocol/massbitroute_${TYPE}.git \
-# $SITE_ROOT/etc/mkagent|$GIT_PUBLIC_URL/massbitprotocol/massbitroute_mkagent.git"
 _prepare() {
 	echo "Prepare"
-	_git_clone $GIT_PRIVATE_READ_URL/massbitroute/env.git /massbit/massbitroute/app/src/env $BRANCH
-
-	source $SITE_ROOT/.env
-	_git_clone $GIT_PUBLIC_URL/massbitprotocol/massbitroute_gbc.git /massbit/massbitroute/app/gbc
-
-	bash $SITE_ROOT/cmd_server _env
-	source $SITE_ROOT/.env_raw
-	_repo
-
+	mkdir -p $SITE_ROOT/logs/nginx $SITE_ROOT/db $SITE_ROOT/tmp $SITE_ROOT/db
 }
 _install_repos() {
+	_git_config
 	_repo
 	for _pathgit in $REPOS; do
 		_path=$(echo $_pathgit | cut -d'|' -f1)
@@ -67,25 +58,27 @@ _install_repos() {
 	done
 }
 
-_install() {
+_init() {
 	if [ -z "$GIT_PRIVATE_READ_URL" ]; then
 		echo "Need GIT_PRIVATE_READ_URL"
 		exit 1
 	fi
+	_tune_os
+	if [ ! -f "$SITE_ROOT/.env" ]; then
+		echo "$MBR_ENV" >$SITE_ROOT/.env
+	fi
 
-	mkdir -p $SITE_ROOT/logs/nginx $SITE_ROOT/db $SITE_ROOT/tmp
+	source $SITE_ROOT/.env
 
-	_git_config
-	_prepare
-	_install_repos
+	_git_clone $GIT_PRIVATE_READ_URL/massbitroute/env.git /massbit/massbitroute/app/src/env $MBR_ENV
+	_git_clone $GIT_PUBLIC_URL/massbitprotocol/massbitroute_gbc.git /massbit/massbitroute/app/gbc
 
-	# for _pathgit in $REPOS; do
-	# 	_path=$(echo $_pathgit | cut -d'|' -f1)
-	# 	_url=$(echo $_pathgit | cut -d'|' -f2)
-	# 	_branch=$(echo $_pathgit | cut -d'|' -f3)
-	# 	_git_clone $_url $_path $_branch
-	# done
+	bash $SITE_ROOT/cmd_server _env
+	source $SITE_ROOT/.env_raw
+	_repo
+}
 
+_supervisor() {
 	ln -sf /massbit/massbitroute/app/gbc /massbit/massbitroute/app/src/gbc
 	ln -sf /massbit/massbitroute/app/gbc/bin/openresty /usr/local/openresty
 	apt-get update
@@ -98,6 +91,23 @@ _install() {
 	cp supervisor.conf /etc/supervisor/conf.d/${TYPE}.conf
 	supervisorctl update
 }
+_install_repos() {
+	_git_config
+	_repo
+	for _pathgit in $REPOS; do
+		_path=$(echo $_pathgit | cut -d'|' -f1)
+		_url=$(echo $_pathgit | cut -d'|' -f2)
+		_branch=$(echo $_pathgit | cut -d'|' -f3)
+		_git_clone $_url $_path $_branch
+	done
+}
+
+_install() {
+	_init
+	_prepare
+	_install_repos
+	_supervisor
+}
 
 _reload() {
 	bash $SITE_ROOT/etc/mkagent/push.sh _kill
@@ -105,6 +115,7 @@ _reload() {
 }
 
 _update_repos() {
+	_git_config
 	_repo
 	_update_sources $REPOS
 	_st_repo=$?
