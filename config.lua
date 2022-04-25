@@ -7,7 +7,9 @@ local _config = {
         }
     },
     templates = {},
-    apps = {},
+    apps = {
+        api = "apps/api"
+    },
     supervisors = {
         ["monitor_client"] = [[
 [program:monitor_client]
