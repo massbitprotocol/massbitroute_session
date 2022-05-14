@@ -1,90 +1,119 @@
 #!/bin/bash
-GRAFANA_VERSION=v8.2.1
-PROMETHEUS_VERSION=v2.30.3
-
+TYPE="session"
 SITE_ROOT=$(realpath $(dirname $(realpath $0))/..)
-ASDF=$SITE_ROOT/bin/.asdf/installs
-GRAFANA_DIR=$ASDF/grafana/$GRAFANA_VERSION
-PROMETHEUS_DIR=$ASDF/prometheus/$PROMETHEUS_VERSION
-
-export HOME=/tmp
+export HOME=$SITE_ROOT
 cd $SITE_ROOT
-#source $SITE_ROOT/.env
-git="git -C $SITE_ROOT"
-type="session"
-service_dir=/massbit/massbitroute/app/src/sites/services
-dir=$service_dir/$type
+source $SITE_ROOT/scripts/base.sh
+_load_env $SITE_ROOT
 
-mbr_cli="$dir/mbr"
-script_run="$dir/scripts/run"
-cmd="$dir/cmd_server"
-nginx="$cmd nginx"
-_git_config() {
-	$git config --global user.name "Vu Tran"
-	$git config --global user.email "baysao@gmail.com"
-}
-_reload() {
-	bash $SITE_ROOT/etc/mkagent/push.sh _kill
-	$cmd _update
-}
+REPOS="/etc/letsencrypt|$GIT_PRIVATE_READ_URL/massbitroute/ssl.git|master \
+/massbit/massbitroute/app/gbc|$GIT_PUBLIC_URL/massbitprotocol/massbitroute_gbc.git \
+$SITE_ROOT|$GIT_PUBLIC_URL/massbitprotocol/massbitroute_${TYPE}.git \
+$SITE_ROOT/etc/mkagent|$GIT_PUBLIC_URL/massbitprotocol/massbitroute_mkagent.git"
+
+# export HOME=/tmp
+# cd $SITE_ROOT
+# #source $SITE_ROOT/.env
+# git="git -C $SITE_ROOT"
+# type="session"
+# service_dir=/massbit/massbitroute/app/src/sites/services
+# dir=$service_dir/$type
+
+# mbr_cli="$dir/mbr"
+# script_run="$dir/scripts/run"
+# cmd="$dir/cmd_server"
+# nginx="$cmd nginx"
+
+# _git_config() {
+# 	$git config --global user.name "Vu Tran"
+# 	$git config --global user.email "baysao@gmail.com"
+# }
 
 _install() {
-	mkdir -p $dir/logs $dir/tmp $dir/db
-	user=massbit
-	pass=41d919e74993945a97972d147c4d01847e8bc1b6
-
-	service=gbc
-	git clone http://$user:$pass@git.massbitroute.com/massbitroute/${service}.git /massbit/massbitroute/app/$service
-	git -C /massbit/massbitroute/app/$service remote set-url origin http://$user:$pass@git.massbitroute.com/massbitroute/${service}.git
-
-	service=asdf
-	git clone http://$user:$pass@git.massbitroute.com/massbitroute/${service}.git /massbit/massbitroute/app/gbc/bin/.asdf
-
-	git -C /massbit/massbitroute/app/gbc/bin/.asdf remote set-url origin http://$user:$pass@git.massbitroute.com/massbitroute/${service}.git
-
-	service=ssl
-	git clone http://$user:$pass@git.massbitroute.com/massbitroute/${service}.git /etc/letsencrypt
-	git -C /etc/letsencrypt remote set-url origin http://$user:$pass@git.massbitroute.com/massbitroute/${service}.git
-
-	service=mkagent
-	git clone http://$user:$pass@git.massbitroute.com/massbitroute/${service}.git $SITE_ROOT/etc/$service
-
-	git -C $SITE_ROOT/etc/$service remote set-url origin http://$user:$pass@git.massbitroute.com/massbitroute/${service}.git
+	_git_config
+	for _pathgit in $REPOS; do
+		_path=$(echo $_pathgit | cut -d'|' -f1)
+		_url=$(echo $_pathgit | cut -d'|' -f2)
+		_branch=$(echo $_pathgit | cut -d'|' -f3)
+		_git_clone $_url $_path $_branch
+	done
 
 	ln -sf /massbit/massbitroute/app/gbc /massbit/massbitroute/app/src/gbc
 	ln -sf /massbit/massbitroute/app/gbc/bin/openresty /usr/local/openresty
 	apt-get update
 	apt-get install -y git apache2-utils supervisor jq python-is-python2 libssl-dev
-	cp supervisor.conf /etc/supervisor/conf.d/${type}.conf
+	cp supervisor.conf /etc/supervisor/conf.d/${TYPE}.conf
 	systemctl enable supervisor
 	systemctl start supervisor
 	supervisorctl update
 
+	# mkdir -p $dir/logs $dir/tmp $dir/db
+	# user=massbit
+	# pass=41d919e74993945a97972d147c4d01847e8bc1b6
+
+	# service=gbc
+	# git clone http://$user:$pass@git.massbitroute.com/massbitroute/${service}.git /massbit/massbitroute/app/$service
+	# git -C /massbit/massbitroute/app/$service remote set-url origin http://$user:$pass@git.massbitroute.com/massbitroute/${service}.git
+
+	# service=asdf
+	# git clone http://$user:$pass@git.massbitroute.com/massbitroute/${service}.git /massbit/massbitroute/app/gbc/bin/.asdf
+
+	# git -C /massbit/massbitroute/app/gbc/bin/.asdf remote set-url origin http://$user:$pass@git.massbitroute.com/massbitroute/${service}.git
+
+	# service=ssl
+	# git clone http://$user:$pass@git.massbitroute.com/massbitroute/${service}.git /etc/letsencrypt
+	# git -C /etc/letsencrypt remote set-url origin http://$user:$pass@git.massbitroute.com/massbitroute/${service}.git
+
+	# service=mkagent
+	# git clone http://$user:$pass@git.massbitroute.com/massbitroute/${service}.git $SITE_ROOT/etc/$service
+
+	# git -C $SITE_ROOT/etc/$service remote set-url origin http://$user:$pass@git.massbitroute.com/massbitroute/${service}.git
+
+	# ln -sf /massbit/massbitroute/app/gbc /massbit/massbitroute/app/src/gbc
+	# ln -sf /massbit/massbitroute/app/gbc/bin/openresty /usr/local/openresty
+	# apt-get update
+	# apt-get install -y git apache2-utils supervisor jq python-is-python2 libssl-dev
+	# cp supervisor.conf /etc/supervisor/conf.d/${type}.conf
+	# systemctl enable supervisor
+	# systemctl start supervisor
+	# supervisorctl update
+}
+
+_reload() {
+	bash $SITE_ROOT/etc/mkagent/push.sh _kill
+	$SITE_ROOT/cmd_server _update
 }
 
 _monitor() {
-	is_reload=0
 	echo mbr-session >vars/TYPE
-
-	for d in /etc/letsencrypt /massbit/massbitroute/app/gbc $SITE_ROOT $SITE_ROOT/etc/mkagent; do
-		mkdir -p $d
-		git -C $d pull | grep -i "updating"
-		if [ $? -eq 0 ]; then
-			is_reload=1
-		fi
-	done
-
+	_update_sources $REPOS
+	is_reload=$?
 	if [ $is_reload -ne 0 ]; then
 		$0 _reload
 	fi
-}
-loop() {
-	while true; do
-		$0 $@
-		sleep 3
-	done
 
+	# is_reload=0
+	# echo mbr-session >vars/TYPE
+
+	# for d in /etc/letsencrypt /massbit/massbitroute/app/gbc $SITE_ROOT $SITE_ROOT/etc/mkagent; do
+	# 	mkdir -p $d
+	# 	git -C $d pull | grep -i "updating"
+	# 	if [ $? -eq 0 ]; then
+	# 		is_reload=1
+	# 	fi
+	# done
+
+	# if [ $is_reload -ne 0 ]; then
+	# 	$0 _reload
+	# fi
 }
+# loop() {
+# 	while true; do
+# 		$0 $@
+# 		sleep 3
+# 	done
+
+# }
 _run() {
 	$SITE_ROOT/start_server
 }
