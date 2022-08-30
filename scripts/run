@@ -1,42 +1,102 @@
 #!/bin/bash
 TYPE="session"
+
 SITE_ROOT=$(realpath $(dirname $(realpath $0))/..)
+
 export HOME=$SITE_ROOT
 
-if [ -e "$SITE_ROOT/cmd_server" ]; then bash $SITE_ROOT/cmd_server _env; fi
-if [ -f "$SITE_ROOT/.env_raw" ]; then source $SITE_ROOT/.env_raw; fi
-source $SITE_ROOT/scripts/base.sh
+source $SITE_ROOT/scripts/base.sh >/dev/null
 
 cd $SITE_ROOT
 
 mbr_root=/massbit/massbitroute/app
 service_dir=$mbr_root/src/sites/services
 
-export MBR_ENV=${MBR_ENV:-dev}
-export BRANCH=${BRANCH:-dev}
-export MBRAPP_BRANCH=${MBRAPP_BRANCH:-dev}
-export ASDF_BRANCH=${ASDF_BRANCH:-dev}
-export SSL_BRANCH=${SSL_BRANCH:-dev}
-export GWMAN_BRANCH=${GWMAN_BRANCH:-dev}
-export NODE_BRANCH=${NODE_BRANCH:-dev}
-export GATEWAY_BRANCH=${GATEWAY_BRANCH:-dev}
-export STAT_BRANCH=${STAT_BRANCH:-dev}
-export MONITOR_BRANCH=${MONITOR_BRANCH:-dev}
-export API_BRANCH=${API_BRANCH:-dev}
-export SESSION_BRANCH=${SESSION_BRANCH:-dev}
-export GIT_BRANCH=${GIT_BRANCH:-dev}
-export MKAGENT_BRANCH=${MKAGENT_BRANCH:-dev}
+export GIT_PUBLIC_URL="https://github.com"
 
-_repo() {
-	REPOS="\
-$SITE_ROOT/env|$GIT_PRIVATE_READ_URL/massbitroute/env.git|$MBR_ENV \
-/etc/letsencrypt|$GIT_PRIVATE_READ_URL/massbitroute/ssl.git|$SSL_BRANCH \
- $mbr_root/gbc|https://github.com/massbitprotocol/massbitroute_gbc|$GBC_BRANCH \
-  $service_dir/mkagent|$GIT_PUBLIC_URL/massbitprotocol/massbitroute_mkagent.git|$MKAGENT_BRANCH \
-"
+_save_env() {
+	if [ -z "$MBR_ENV" ]; then
+		echo "MBR_ENV missing"
+		exit 1
+	fi
+
+	if [ -z "$PORTAL_URL" ]; then
+		echo "PORTAL_URL missing"
+		exit 1
+	else
+		echo $PORTAL_URL >$SITE_ROOT/vars/PORTAL_URL
+	fi
+	if [ -z "$DOMAIN" ]; then
+		DOMAIN=$(echo $PORTAL_URL | cut -d'.' -f2-)
+	fi
+	if [ -z "$DOMAIN" ]; then
+		echo "DOMAIN missing"
+		exit 1
+	else
+		echo $DOMAIN >$SITE_ROOT/vars/DOMAIN
+		cat >$SITE_ROOT/src/env.lua <<EOF
+return {
+["DOMAIN"] = "$DOMAIN"
+}
+EOF
+	fi
 }
 
-_repo
+_repo() {
+	if [ -z "$MBR_ENV" ]; then
+		echo "MBR_ENV missing"
+		exit 1
+	fi
+	if [ -z "$GIT_PUBLIC_URL" ]; then
+		echo "GIT_PUBLIC_URL missing"
+		exit 1
+	fi
+
+	export ASDF_BRANCH=${ASDF_BRANCH:-$MBR_ENV}
+	export SSL_BRANCH=${SSL_BRANCH:-$MBR_ENV}
+	export STAT_BRANCH=${STAT_BRANCH:-$MBR_ENV}
+	export MKAGENT_BRANCH=${MKAGENT_BRANCH:-$MBR_ENV}
+	REPOS=""
+}
+
+_repo_private() {
+	if [ -z "$MBR_ENV" ]; then
+		echo "MBR_ENV missing"
+		exit 1
+	fi
+	if [ \( -z "$GIT_PRIVATE_READ_URL" \) -o \( -z "$GIT_PRIVATE_DOMAIN" ] \) ]; then
+		echo "GIT_PRIVATE_READ_URL|GIT_PRIVATE_DOMAIN missing"
+		exit 1
+	fi
+	if [ -z "$GIT_PRIVATE_BRANCH" ]; then
+		echo "GIT_PRIVATE_BRANCH missing"
+		exit 1
+	fi
+
+	export MKAGENT_BRANCH=${MKAGENT_BRANCH:-$MBR_ENV}
+
+	export GBC_BRANCH=${GBC_BRANCH:-$MBR_ENV}
+	export ASDF_BRANCH=${ASDF_BRANCH:-$MBR_ENV}
+	export GWMAN_BRANCH=${GWMAN_BRANCH:-$MBR_ENV}
+
+	export ENV_BRANCH=${ENV_BRANCH:-$GIT_PRIVATE_BRANCH}
+	export SSL_BRANCH=${SSL_BRANCH:-$GIT_PRIVATE_BRANCH}
+	export GWMANDEPLOY_BRANCH=${GWMANDEPLOY_BRANCH:-$GIT_PRIVATE_BRANCH}
+	export APIDEPLOY_BRANCH=${APIDEPLOY_BRANCH:-$GIT_PRIVATE_BRANCH}
+
+	export NODE_BRANCH=${NODE_BRANCH:-$MBR_ENV}
+	export GATEWAY_BRANCH=${GATEWAY_BRANCH:-$MBR_ENV}
+	export API_BRANCH=${API_BRANCH:-$MBR_ENV}
+
+	_env
+	REPOS_PRIVATE="\
+$SITE_ROOT/env|$GIT_PRIVATE_READ_URL/massbitroute/env.git|$ENV_BRANCH \
+/etc/letsencrypt|$GIT_PRIVATE_READ_URL/massbitroute/ssl.git|$SSL_BRANCH \
+"
+	REPOS_RUNTIME="\ 
+
+"
+}
 
 _prepare() {
 	echo "Prepare"
@@ -45,62 +105,53 @@ _prepare() {
 
 }
 _install_repos() {
-	_git_config
+	if [ -z "$MBR_ENV" ]; then
+		echo "MBR_ENV missing"
+		exit 1
+	fi
 	_repo
-	for _pathgit in $REPOS; do
-		_path=$(echo $_pathgit | cut -d'|' -f1)
-		_url=$(echo $_pathgit | cut -d'|' -f2)
-		_branch=$(echo $_pathgit | cut -d'|' -f3)
-		_git_clone $_url $_path $_branch
-	done
+	_install_sources $REPOS
+	_install_status=$?
+	return $_install_status
 }
 
-_init() {
+_update_repos() {
+	if [ -z "$MBR_ENV" ]; then
+		echo "MBR_ENV missing"
+		exit 1
+	fi
 	if [ -z "$GIT_PRIVATE_READ_URL" ]; then
 		echo "Need GIT_PRIVATE_READ_URL"
 		exit 1
 	fi
-	# _tune_os
-	if [ ! -f "$SITE_ROOT/.env" ]; then
-		echo "$MBR_ENV" >$SITE_ROOT/.env
-	fi
-
-	source $SITE_ROOT/.env
-
-	_git_clone $GIT_PRIVATE_READ_URL/massbitroute/env.git /massbit/massbitroute/app/src/env $MBR_ENV
-	_git_clone $GIT_PUBLIC_URL/massbitprotocol/massbitroute_gbc.git /massbit/massbitroute/app/gbc
-
-	bash $SITE_ROOT/cmd_server _env
-	source $SITE_ROOT/.env_raw
-	_repo
+	_repo_private
+	_update_sources $REPOS_PRIVATE
+	_update_status=$?
+	_update_sources $REPOS_RUNTIME
+	return $_update_status
 }
 
 _supervisor() {
 	ln -sf /massbit/massbitroute/app/gbc /massbit/massbitroute/app/src/gbc
 	ln -sf /massbit/massbitroute/app/gbc/bin/openresty /usr/local/openresty
-	apt-get update
-	apt-get install -y git apache2-utils supervisor jq python-is-python2 libssl-dev
+	# apt-get update
+	# apt-get install -y git apache2-utils supervisor jq python-is-python2 libssl-dev \
+	# 	liburcu-dev libev-dev libsodium-dev libtool libunwind-dev libmaxminddb-dev
 
-	systemctl enable supervisor
-	systemctl start supervisor
+	if [ -f "/usr/bin/systemctl" ]; then
 
+		systemctl enable supervisor
+		systemctl start supervisor
+
+	fi
 	mkdir -p /etc/supervisor/conf.d
 	cp supervisor.conf /etc/supervisor/conf.d/${TYPE}.conf
-	supervisorctl update
-}
-_install_repos() {
-	_git_config
-	_repo
-	for _pathgit in $REPOS; do
-		_path=$(echo $_pathgit | cut -d'|' -f1)
-		_url=$(echo $_pathgit | cut -d'|' -f2)
-		_branch=$(echo $_pathgit | cut -d'|' -f3)
-		_git_clone $_url $_path $_branch
-	done
+	if [ "$MBR_MODE" != "docker" ]; then
+		supervisorctl update
+	fi
 }
 
 _install_one() {
-	_init
 	_prepare
 	_install_repos
 }
@@ -110,16 +161,12 @@ _install() {
 }
 
 _reload() {
-	bash $SITE_ROOT/etc/mkagent/push.sh _kill
-	$SITE_ROOT/cmd_server _update
-}
+	pkill -f push.py
 
-_update_repos() {
-	_git_config
-	_repo
-	_update_sources $REPOS
-	_st_repo=$?
-	return $_st_repo
+	$SITE_ROOT/cmd_server _update
+	$SITE_ROOT/cmd_server update
+	$SITE_ROOT/cmd_server start all
+
 }
 
 _update() {
@@ -132,8 +179,6 @@ _update() {
 }
 
 _monitor() {
-	echo mbr-session >vars/TYPE
-
 	_update
 	is_reload=$?
 
@@ -143,6 +188,7 @@ _monitor() {
 }
 _run() {
 	rm -rf $SITE_ROOT/tmp/*
+	_update
 	$SITE_ROOT/start_server
 }
 
