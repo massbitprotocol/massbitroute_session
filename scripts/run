@@ -119,10 +119,21 @@ _update_repos() {
 		echo "Need GIT_PRIVATE_READ_URL"
 		exit 1
 	fi
+	_update_status=0
+
 	_repo_private
 	_update_sources $REPOS_PRIVATE
+	_st=$?
+	if [ $_update_status -eq 0 ]; then
+		_update_status=$_st
+	fi
+
 	_update_status=$?
 	_update_sources $REPOS_RUNTIME
+	_st=$?
+	if [ $_update_status -eq 0 ]; then
+		_update_status=$_st
+	fi
 	return $_update_status
 }
 
