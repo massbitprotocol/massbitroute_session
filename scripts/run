@@ -32,11 +32,11 @@ _repo() {
 	export GBC_BRANCH=latest
 	export MKAGENT_BRANCH=latest
 
+	#$mbr_root/gbc/bin/.asdf|$GIT_PUBLIC_URL/massbitprotocol/massbitroute_asdf|$ASDF_BRANCH \
 	_env
 	REPOS="\
 	   $service_dir/mkagent|$GIT_PUBLIC_URL/massbitprotocol/massbitroute_mkagent.git|$MKAGENT_BRANCH \
 	 $mbr_root/gbc|$GIT_PUBLIC_URL/massbitprotocol/massbitroute_gbc|$GBC_BRANCH \
-	 $mbr_root/gbc/bin/.asdf|$GIT_PUBLIC_URL/massbitprotocol/massbitroute_asdf|$ASDF_BRANCH \
 "
 }
 
