@@ -16,6 +16,57 @@ chmod +x $SITE_ROOT/scripts/run
 
 export GIT_PUBLIC_URL="https://github.com"
 
+_repo() {
+	if [ -z "$MBR_ENV" ]; then
+		echo "MBR_ENV missing"
+		exit 1
+	fi
+	if [ -z "$GIT_PUBLIC_URL" ]; then
+		echo "GIT_PUBLIC_URL missing"
+		exit 1
+	fi
+
+	export ENV_BRANCH=${ENV_BRANCH:-$GIT_PRIVATE_BRANCH}
+
+	export ASDF_BRANCH=latest
+	export GBC_BRANCH=latest
+	export MKAGENT_BRANCH=latest
+
+	_env
+	REPOS="\
+	   $service_dir/mkagent|$GIT_PUBLIC_URL/massbitprotocol/massbitroute_mkagent.git|$MKAGENT_BRANCH \
+	 $mbr_root/gbc|$GIT_PUBLIC_URL/massbitprotocol/massbitroute_gbc|$GBC_BRANCH \
+	 $mbr_root/gbc/bin/.asdf|$GIT_PUBLIC_URL/massbitprotocol/massbitroute_asdf|$ASDF_BRANCH \
+"
+}
+
+_repo_private() {
+	if [ -z "$MBR_ENV" ]; then
+		echo "MBR_ENV missing"
+		exit 1
+	fi
+	if [ -z "$GIT_PRIVATE_READ_URL" ]; then
+		echo "GIT_PRIVATE_READ_URL missing"
+		exit 1
+	fi
+	if [ -z "$GIT_PRIVATE_BRANCH" ]; then
+		echo "GIT_PRIVATE_BRANCH missing"
+		exit 1
+	fi
+
+	export ENV_BRANCH=${ENV_BRANCH:-$GIT_PRIVATE_BRANCH}
+	export SSL_BRANCH=${SSL_BRANCH:-$GIT_PRIVATE_BRANCH}
+
+	_env
+	REPOS_PRIVATE="\
+$SITE_ROOT/env|$GIT_PRIVATE_READ_URL/massbitroute/env.git|$ENV_BRANCH \
+/etc/letsencrypt|$GIT_PRIVATE_READ_URL/massbitroute/ssl.git|$SSL_BRANCH \
+"
+	REPOS_RUNTIME="\ 
+"
+
+}
+
 _save_env() {
 	if [ -z "$MBR_ENV" ]; then
 		echo "MBR_ENV missing"
@@ -121,7 +172,14 @@ _update_repos() {
 		echo "Need GIT_PRIVATE_READ_URL"
 		exit 1
 	fi
+
+	_repo
 	_update_status=0
+	_update_sources $REPOS
+	_st=$?
+	if [ $_update_status -eq 0 ]; then
+		_update_status=$_st
+	fi
 
 	_repo_private
 	_update_sources $REPOS_PRIVATE
