@@ -83,9 +83,7 @@ our $config = <<'_EOC_';
     set $site_root /massbit/massbitroute/app/src/sites/services/session/sites/..;
     set $server_root /massbit/massbitroute/app/src/sites/services/session;
     set $redis_sock /massbit/massbitroute/app/src/sites/services/session/tmp/redis.sock;
-    resolver 8.8.4.4 ipv6=off;
-    client_body_buffer_size 512K;
-    client_max_body_size 1G;
+
     include /massbit/massbitroute/app/src/sites/services/session/tmp/app_session_api_entry.conf;
 
 _EOC_
