@@ -84,7 +84,18 @@ our $config = <<'_EOC_';
     set $server_root /massbit/massbitroute/app/src/sites/services/session;
     set $redis_sock /massbit/massbitroute/app/src/sites/services/session/tmp/redis.sock;
 
-    include /massbit/massbitroute/app/src/sites/services/session/tmp/app_session_api_entry.conf;
+location /api/v1 {
+    encrypted_session_key abcdefghijmbrbaysaklmnopqrstuvwo;
+    encrypted_session_iv 123mbrbaysao4567;
+    encrypted_session_expires 30d; # in sec
+    # include /massbit/massbitroute/app/src/sites/services/session/cors.conf;
+    set $app_root _APP_ROOT_;
+    default_type application/json;
+    limit_except OPTIONS POST GET HEAD {
+        deny all;
+    }
+    access_by_lua_file /massbit/massbitroute/app/src/sites/services/session/src/filter-jsonrpc-access.lua;
+}
 
 _EOC_
 run_tests();
@@ -99,47 +110,8 @@ __DATA__
 --- more_headers
 Content-Type: application/json
 --- request
-POST /_internal_api/v2/?action=api.create
-{
-  "allow_methods" : {},
-  "app_id" : "c237c346-7a0f-478b-bc0c-e3ca2522948f",
-  "app_key" : "WJaEniHiudjuhLV7diHkDw",
-  "blockchain" : "eth",
-  "id" : "c237c346-7a0f-478b-bc0c-e3ca2522948f",
-  "limit_rate_per_day" : 3000,
-  "limit_rate_per_sec" : 100,
-  "name" : "api-6",
-  "network" : "mainnet",
-  "status" : 1,
-  "project_id" : "83260a9e-4e41-4293-abc5-fe47a2219534",
-  "project_quota" : "100000",
-  "partner_id" : "fc78b64c5c33f3f270700b0c4d3e7998188035ab",
-  "sid" : "403716b0f58a7d6ddec769f8ca6008f2c1c0cea6",
-  "user_id" : "b363ddf4-42cf-4ccf-89c2-8c42c531ac99"
-}
+POST /api/v1/?action=api.create
+{"id": "blockNumber", "jsonrpc": "2.0", "method": "eth_getBlockByNumber", "params": ["latest", false]}
 --- response_body eval
 qr/"result":true/
---- no_error_log
-
-=== Check raw data if created or not
-
---- main_config eval: $::main_config
---- http_config eval: $::http_config
---- config eval: $::config
---- request
-GET /deploy/dapi/eth/mainnet/b363ddf4-42cf-4ccf-89c2-8c42c531ac99/c237c346-7a0f-478b-bc0c-e3ca2522948f
---- error_code: 200
---- response_body eval
-qr/"id":"c237c346-7a0f-478b-bc0c-e3ca2522948f"/
---- no_error_log
-
-=== Check ID conf if created or not
-
---- main_config eval: $::main_config
---- http_config eval: $::http_config
---- config eval: $::config
---- request
-GET /deploy/dapiconf/nodes/eth-mainnet/c237c346-7a0f-478b-bc0c-e3ca2522948f.conf
---- error_code: 200
---- response_body: 
 --- no_error_log
