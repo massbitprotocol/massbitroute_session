@@ -155,7 +155,7 @@ _run_test() {
 	cd $SITE_ROOT
 	export PATH=$PATH:$SITE_ROOT/bin/openresty/nginx/sbin
 
-	supervisorctl stop mbr_api_monitor
+	supervisorctl stop mbr_${TYPE}_monitor
 
 	rm $SITE_ROOT/src/env.lua
 	env_src=$SITE_ROOT/env/env.lua
