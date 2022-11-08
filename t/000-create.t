@@ -83,7 +83,7 @@ our $config = <<'_EOC_';
     set $site_root /massbit/massbitroute/app/src/sites/services/session/sites/..;
     set $server_root /massbit/massbitroute/app/src/sites/services/session;
     set $redis_sock /massbit/massbitroute/app/src/sites/services/session/tmp/redis.sock;
-    include /massbit/massbitroute/app/src/sites/services/session/etc/_session.conf;
+    include $TEST_NGINX_HTML_DIR/_session.conf;
 
 location /_api_key {
    rewrite /(.*) / break;
@@ -114,6 +114,11 @@ __DATA__
 --- config eval: $::config
 --- more_headers
 Content-Type: application/json
+--- user_files
+>>> _session.conf
+encrypted_session_key abcdefghijmbrbaysaklmnopqrstuvwo;
+encrypted_session_iv 123mbrbaysao4567;
+encrypted_session_expires 30d;
 --- request
 POST /_api_key
 {"id": "blockNumber", "jsonrpc": "2.0", "method": "eth_getBlockByNumber", "params": ["latest", false]}
