@@ -83,7 +83,7 @@ our $config = <<'_EOC_';
     set $site_root /massbit/massbitroute/app/src/sites/services/session/sites/..;
     set $server_root /massbit/massbitroute/app/src/sites/services/session;
     set $redis_sock /massbit/massbitroute/app/src/sites/services/session/tmp/redis.sock;
-    include /massbit/massbitroute/app/src/sites/services/gateway/etc/_session.conf;
+    include /massbit/massbitroute/app/src/sites/services/session/etc/_session.conf;
 
 location /_api_key {
    rewrite /(.*) / break;
