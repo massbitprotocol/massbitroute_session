@@ -87,7 +87,7 @@ our $config = <<'_EOC_';
 
 location /_api_key {
    rewrite /(.*) / break;
-   access_by_lua_file /massbit/massbitroute/app/src/sites/services/gateway/src/filter-jsonrpc-access.lua;
+   access_by_lua_file /massbit/massbitroute/app/src/sites/services/session/src/_gateway_test.lua;
 }
 location /api/v1 {
     encrypted_session_key abcdefghijmbrbaysaklmnopqrstuvwo;
