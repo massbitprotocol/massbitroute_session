@@ -157,12 +157,14 @@ _run_test() {
 
 	supervisorctl stop mbr_${TYPE}_monitor
 
-	if [ -f "$SITE_ROOT/src/env.lua" ];then
+	if [ ! -f "$SITE_ROOT/src/env.lua" ];then
 	   touch $SITE_ROOT/src/env.lua
+	   else
+	       > $SITE_ROOT/src/env.lua
 	fi
 	   
        
-	rm $SITE_ROOT/src/env.lua
+
 	env_src=$SITE_ROOT/env/env.lua
 	if [ -f "$env_src" ]; then
 		sed /PARTNER_ID/d -i $env_src
