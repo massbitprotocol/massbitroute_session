@@ -83,7 +83,12 @@ our $config = <<'_EOC_';
     set $site_root /massbit/massbitroute/app/src/sites/services/session/sites/..;
     set $server_root /massbit/massbitroute/app/src/sites/services/session;
     set $redis_sock /massbit/massbitroute/app/src/sites/services/session/tmp/redis.sock;
+    include /massbit/massbitroute/app/src/sites/services/gateway/etc/_session.conf;
 
+location /_api_key {
+   rewrite /(.*) / break;
+   access_by_lua_file /massbit/massbitroute/app/src/sites/services/gateway/src/filter-jsonrpc-access.lua;
+}
 location /api/v1 {
     encrypted_session_key abcdefghijmbrbaysaklmnopqrstuvwo;
     encrypted_session_iv 123mbrbaysao4567;
@@ -110,7 +115,7 @@ __DATA__
 --- more_headers
 Content-Type: application/json
 --- request
-POST /api/v1/?action=api.create
+POST /_api_key
 {"id": "blockNumber", "jsonrpc": "2.0", "method": "eth_getBlockByNumber", "params": ["latest", false]}
 --- response_body eval
 qr/"result":true/
