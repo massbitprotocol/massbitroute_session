@@ -159,6 +159,7 @@ encrypted_session_expires 30d;
 --- request
 POST /lR5bx6vYwJrwcGRD__4gPg
 {"id": "blockNumber", "jsonrpc": "2.0", "method": "eth_getBlockByNumber", "params": ["latest", false]}
---- response_body eval
-qr/"result":true/
+--- error_code: 308
+--- response_headers_like
+Location: /api/v1.*
 --- no_error_log
