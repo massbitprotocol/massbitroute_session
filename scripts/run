@@ -4,7 +4,10 @@ TYPE="session"
 SITE_ROOT=$(realpath $(dirname $(realpath $0))/..)
 
 export HOME=$SITE_ROOT
-source $SITE_ROOT/env/env.sh
+if [ -f "$SITE_ROOT/env/env.sh" ];then
+   source $SITE_ROOT/env/env.sh
+fi
+   
 source $SITE_ROOT/scripts/base.sh >/dev/null
 
 cd $SITE_ROOT
